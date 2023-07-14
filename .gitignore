@@ -46,6 +46,8 @@ SourceArt/**/*.png
 SourceArt/**/*.tga
 
 # Binary Files
+# TODO: Test it out in another UE 5.2.1 machine to see if Project can be build/run
+# else comment out the following Binary Files lines
 Binaries/*
 Plugins/*/Binaries/*
 
