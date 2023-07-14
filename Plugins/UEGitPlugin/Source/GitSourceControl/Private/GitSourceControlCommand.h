@@ -1,13 +1,30 @@
-// Copyright (c) 2014-2022 Sebastien Rombauts (sebastien.rombauts@gmail.com)
+// Copyright (c) 2014-2023 Sebastien Rombauts (sebastien.rombauts@gmail.com)
 //
 // Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
 // or copy at http://opensource.org/licenses/MIT)
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "ISourceControlProvider.h"
 #include "Misc/IQueuedWork.h"
+
+/** Accumulated error and info messages for a revision control operation.  */
+struct FGitSourceControlResultInfo
+{
+	/** Append any messages from another FSourceControlResultInfo, ensuring to keep any already accumulated info. */
+	void Append(const FGitSourceControlResultInfo& InResultInfo)
+	{
+		InfoMessages.Append(InResultInfo.InfoMessages);
+		ErrorMessages.Append(InResultInfo.ErrorMessages);
+	}
+
+	/** Info and/or warning message storage */
+	TArray<FString> InfoMessages;
+
+	/** Potential error message storage */
+	TArray<FString> ErrorMessages;
+};
+
 
 /**
  * Used to execute Git commands multi-threaded.
@@ -16,7 +33,13 @@ class FGitSourceControlCommand : public IQueuedWork
 {
 public:
 
-	FGitSourceControlCommand(const TSharedRef<class ISourceControlOperation, ESPMode::ThreadSafe>& InOperation, const TSharedRef<class IGitSourceControlWorker, ESPMode::ThreadSafe>& InWorker, const FSourceControlOperationComplete& InOperationCompleteDelegate = FSourceControlOperationComplete() );
+	FGitSourceControlCommand(const TSharedRef<class ISourceControlOperation, ESPMode::ThreadSafe>& InOperation, const TSharedRef<class IGitSourceControlWorker, ESPMode::ThreadSafe>& InWorker, const FSourceControlOperationComplete& InOperationCompleteDelegate = FSourceControlOperationComplete());
+
+	/**
+	 *  Modify the repo root if all selected files are in a plugin subfolder, and the plugin subfolder is a git repo
+	 *  This supports the case where each plugin is a sub module
+	 */
+	void UpdateRepositoryRootIfSubmodule(const TArray<FString>& AbsoluteFilePaths);
 
 	/**
 	 * This is where the real thread work is done. All work that is done for
@@ -38,6 +61,12 @@ public:
 	 */
 	virtual void DoThreadedWork() override;
 
+	/** Attempt to cancel the operation */
+	void Cancel();
+
+	/** Is the operation canceled? */
+	bool IsCanceled() const;
+
 	/** Save any results and call any registered callbacks. */
 	ECommandResult::Type ReturnResults();
 
@@ -45,8 +74,11 @@ public:
 	/** Path to the Git binary */
 	FString PathToGitBinary;
 
-	/** Path to the root of the Git repository: can be the ProjectDir itself, or any parent directory (found by the "Connect" operation) */
+	/** Path to the root of the Unreal revision control repository: usually the ProjectDir */
 	FString PathToRepositoryRoot;
+
+	/** Path to the root of the Git repository: can be the ProjectDir itself, or any parent directory (found by the "Connect" operation) */
+	FString PathToGitRoot;
 
 	/** Tell if using the Git LFS file Locking workflow */
 	bool bUsingGitLfsLocking;
@@ -60,14 +92,14 @@ public:
 	/** Delegate to notify when this operation completes */
 	FSourceControlOperationComplete OperationCompleteDelegate;
 
-	/**If true, this command has been processed by the source control thread*/
+	/**If true, this command has been processed by the revision control thread*/
 	volatile int32 bExecuteProcessed;
 
-	/**If true, the source control command succeeded*/
-	bool bCommandSuccessful;
+	/**If true, this command has been cancelled*/
+	volatile int32 bCancelled;
 
-	/** TODO LFS If true, the source control connection was dropped while this command was being executed*/
-	bool bConnectionDropped;
+	/**If true, the revision control command succeeded*/
+	bool bCommandSuccessful;
 
 	/** Current Commit full SHA1 */
 	FString CommitId;
@@ -84,9 +116,9 @@ public:
 	/** Files to perform this operation on */
 	TArray<FString> Files;
 
-	/**Info and/or warning message storage*/
-	TArray<FString> InfoMessages;
+	/** Potential error, warning and info message storage */
+	FGitSourceControlResultInfo ResultInfo;
 
-	/**Potential error message storage*/
-	TArray<FString> ErrorMessages;
+	/** Branch names for status queries */
+	TArray< FString > StatusBranchNames;
 };

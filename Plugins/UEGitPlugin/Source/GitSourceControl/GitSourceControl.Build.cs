@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2022 Sebastien Rombauts (sebastien.rombauts@gmail.com)
+// Copyright (c) 2014-2020 Sebastien Rombauts (sebastien.rombauts@gmail.com)
 //
 // Distributed under the MIT License (MIT) (See accompanying file LICENSE.txt
 // or copy at http://opensource.org/licenses/MIT)
@@ -9,11 +9,8 @@ public class GitSourceControl : ModuleRules
 {
 	public GitSourceControl(ReadOnlyTargetRules Target) : base(Target)
 	{
-		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-		PrivatePCHHeaderFile = "Private/GitSourceControlPrivatePCH.h";
-
 		PrivateDependencyModuleNames.AddRange(
-			new[] {
+			new string[] {
 				"Core",
 				"CoreUObject",
 				"Slate",
@@ -23,7 +20,8 @@ public class GitSourceControl : ModuleRules
 				"EditorStyle",
 				"UnrealEd",
 				"SourceControl",
-				"Projects",
+				"SourceControlWindows",
+				"Projects"
 			}
 		);
 
